@@ -17,13 +17,7 @@ spec:
       containers:
       - name: nginx
         image: nginx:latest
-        resources:
-          requests:
-            cpu: "100m" # 0.1 CPU core
-            memory: "128Mi" # REDUCED from 256Mi
-          limits:
-            cpu: "500m" # Max 0.5 CPU cores
-            memory: "256Mi" # REDUCED from 512Mi"
+
         ports:
         - containerPort: 80
       
