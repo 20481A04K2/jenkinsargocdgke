@@ -28,3 +28,5 @@ spec:
         - containerPort: 80
 
  
+      nodeSelector:
+        cloud.google.com/gke-nodepool:default-pool
