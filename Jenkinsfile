@@ -50,8 +50,8 @@ pipeline {
                         // 4. Perform the Kubernetes deployment
                         echo 'Applying Kubernetes deployment configuration...'
                         // FIX: Updated file paths to use the manifests/ directory provided in the context.
-                        sh 'kubectl apply -f manifests/deployment-high-spec.yaml'
-                        sh 'kubectl apply -f manifests/service-high-spec.yaml'
+                        sh 'kubectl apply -f k8s/deployment.yaml'
+                        sh 'kubectl apply -f k8s/service.yaml'
                     }
                 }
             }
