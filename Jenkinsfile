@@ -27,8 +27,8 @@ pipeline {
         stage('GKE Deployment') {
             steps {
                 script {
-                    // We use the Docker Pipeline step here to execute commands inside the container
-                    docker.image('gcr.io/google.com/cloudsdk/cloud-sdk').inside(
+                    // FIX: Changed deprecated GCR path to the official Docker Hub image name.
+                    docker.image('google/cloud-sdk').inside(
                         // CRITICAL: Explicitly define the Docker run arguments here
                         // -u root: Run as root inside the container
                         // -v /host/path:/container/path: Mount the kubeconfig from the host to the container
@@ -38,6 +38,7 @@ pipeline {
                         
                         // 1. Refresh authentication using the host VM's Service Account
                         echo 'Activating host Service Account for token refresh...'
+                        // This step assumes the Jenkins VM has a GCP Service Account attached with GKE Admin roles.
                         sh "gcloud auth activate-service-account --key-file=/dev/null"
                         
                         // 2. Get fresh cluster credentials (updates the mounted /root/.kube/config file)
