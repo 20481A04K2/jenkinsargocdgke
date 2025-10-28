@@ -49,7 +49,8 @@ pipeline {
 
                     // 4. Perform the Kubernetes deployment
                     echo 'Applying Kubernetes deployment configuration...'
-                    sh 'kubectl apply -f k8s/simple-deployment.yaml'
+                    sh 'kubectl apply -f k8s/deployment.yaml'
+                    sh 'kubectl apply -f k8s/service.yaml'
                 }
             }
         }
