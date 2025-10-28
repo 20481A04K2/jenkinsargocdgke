@@ -5,14 +5,15 @@ pipeline {
             image 'gcr.io/google.com/cloudsdk/cloud-sdk'
             // Running as root to ensure permissions are not an issue inside the container
             // when accessing files mounted from the host (like the kubeconfig).
-            args '-u root'
+            args '-u root -v /var/lib/jenkins/.kube:/root/.kube' // <-- ADDED MOUNT POINT
         }
     }
 
     // Set the KUBECONFIG environment variable to point to the file copied on the host.
     // This is required for kubectl inside the Docker container to find the configuration.
     environment {
-        KUBECONFIG = '/var/lib/jenkins/.kube/config'
+        // Change the KUBECONFIG path to point to the location INSIDE the Docker container
+        KUBECONFIG = '/root/.kube/config'
         // Define your project variables
         GCP_PROJECT = 'crested-polygon-472204-n5'
         GKE_CLUSTER = 'cluster-2'
