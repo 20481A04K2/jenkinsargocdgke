@@ -1,31 +1,30 @@
 pipeline {
-    // Uses the Google Cloud SDK Docker image as the execution environment for all stages.
+    // 1. Define the execution environment (GCloud SDK Docker image)
     agent {
         docker {
             image 'gcr.io/google.com/cloudsdk/cloud-sdk'
-            // Running as root to ensure permissions are not an issue inside the container
-            // when accessing files mounted from the host (like the kubeconfig).
-            args '-u root -v /var/lib/jenkins/.kube:/root/.kube' // <-- ADDED MOUNT POINT
+            // CRITICAL: Mounts the kubeconfig directory from the host (/var/lib/jenkins/.kube)
+            // into the container's root user's home directory (/root/.kube).
+            args '-u root -v /var/lib/jenkins/.kube:/root/.kube' 
         }
     }
 
-    // Set the KUBECONFIG environment variable to point to the file copied on the host.
-    // This is required for kubectl inside the Docker container to find the configuration.
+    // 2. Define Environment Variables
     environment {
-        // Change the KUBECONFIG path to point to the location INSIDE the Docker container
+        // CRITICAL: KUBECONFIG must point to the mounted path INSIDE the Docker container
         KUBECONFIG = '/root/.kube/config'
-        // Define your project variables
+        // Project Variables
         GCP_PROJECT = 'crested-polygon-472204-n5'
         GKE_CLUSTER = 'cluster-2'
         GKE_REGION  = 'us-east1'
     }
 
+    // 3. Define Pipeline Stages
     stages {
         stage('Checkout Source Code') {
             steps {
                 echo 'Checking out code from SCM...'
-                // Assumes the Git repository is configured in the Jenkins job settings.
-                // It checks out the code into the workspace.
+                // This checks out the code configured in the job's SCM settings
                 checkout scm
             }
         }
@@ -33,15 +32,13 @@ pipeline {
         stage('GKE Deployment') {
             steps {
                 script {
-                    echo "KUBECONFIG is set to: ${env.KUBECONFIG}"
+                    echo "KUBECONFIG is correctly set to: ${env.KUBECONFIG}"
                     
-                    // 1. Refresh the authentication token using the host VM's Service Account.
-                    // This command uses the gcloud auth plugin embedded in the kubeconfig.
+                    // 1. Refresh authentication using the host VM's Service Account
                     echo 'Activating host Service Account for token refresh...'
                     sh "gcloud auth activate-service-account --key-file=/dev/null"
                     
-                    // 2. Refresh the cluster context/credentials using the Service Account token.
-                    // This updates the credentials in the KUBECONFIG file on the host.
+                    // 2. Get fresh cluster credentials (updates the mounted /root/.kube/config file)
                     echo "Getting fresh credentials for cluster ${env.GKE_CLUSTER}..."
                     sh "gcloud container clusters get-credentials ${env.GKE_CLUSTER} --region ${env.GKE_REGION} --project ${env.GCP_PROJECT}"
 
@@ -57,6 +54,7 @@ pipeline {
         }
     }
 
+    // 4. Post-Build Actions
     post {
         always {
             // Clean up workspace files to save disk space
