@@ -1,17 +1,12 @@
 pipeline {
-    // 1. Define the execution environment (GCloud SDK Docker image)
-    agent {
-        docker {
-            image 'gcr.io/google.com/cloudsdk/cloud-sdk'
-            // CRITICAL: Mounts the kubeconfig directory from the host (/var/lib/jenkins/.kube)
-            // into the container's root user's home directory (/root/.kube).
-            args '-u root -v /var/lib/jenkins/.kube:/root/.kube' 
-        }
-    }
+    // 1. Define the execution environment
+    // Changed to 'agent any' to resolve the "Invalid agent type" error.
+    agent any
 
     // 2. Define Environment Variables
     environment {
         // CRITICAL: KUBECONFIG must point to the mounted path INSIDE the Docker container
+        // We will update this path inside the steps, as the mount path may be different
         KUBECONFIG = '/root/.kube/config'
         // Project Variables
         GCP_PROJECT = 'crested-polygon-472204-n5'
@@ -32,23 +27,31 @@ pipeline {
         stage('GKE Deployment') {
             steps {
                 script {
-                    echo "KUBECONFIG is correctly set to: ${env.KUBECONFIG}"
-                    
-                    // 1. Refresh authentication using the host VM's Service Account
-                    echo 'Activating host Service Account for token refresh...'
-                    sh "gcloud auth activate-service-account --key-file=/dev/null"
-                    
-                    // 2. Get fresh cluster credentials (updates the mounted /root/.kube/config file)
-                    echo "Getting fresh credentials for cluster ${env.GKE_CLUSTER}..."
-                    sh "gcloud container clusters get-credentials ${env.GKE_CLUSTER} --region ${env.GKE_REGION} --project ${env.GCP_PROJECT}"
+                    // We use the Docker Pipeline step here to execute commands inside the container
+                    docker.image('gcr.io/google.com/cloudsdk/cloud-sdk').inside(
+                        // CRITICAL: Explicitly define the Docker run arguments here
+                        // -u root: Run as root inside the container
+                        // -v /host/path:/container/path: Mount the kubeconfig from the host to the container
+                        '--user root -v /var/lib/jenkins/.kube:/root/.kube'
+                    ) {
+                        echo "KUBECONFIG is correctly set to: ${env.KUBECONFIG} (Inside Docker container)"
+                        
+                        // 1. Refresh authentication using the host VM's Service Account
+                        echo 'Activating host Service Account for token refresh...'
+                        sh "gcloud auth activate-service-account --key-file=/dev/null"
+                        
+                        // 2. Get fresh cluster credentials (updates the mounted /root/.kube/config file)
+                        echo "Getting fresh credentials for cluster ${env.GKE_CLUSTER}..."
+                        sh "gcloud container clusters get-credentials ${env.GKE_CLUSTER} --region ${env.GKE_REGION} --project ${env.GCP_PROJECT}"
 
-                    // 3. Verify kubectl connection
-                    sh 'kubectl cluster-info'
+                        // 3. Verify kubectl connection
+                        sh 'kubectl cluster-info'
 
-                    // 4. Perform the Kubernetes deployment
-                    echo 'Applying Kubernetes deployment configuration...'
-                    sh 'kubectl apply -f k8s/deployment.yaml'
-                    sh 'kubectl apply -f k8s/service.yaml'
+                        // 4. Perform the Kubernetes deployment
+                        echo 'Applying Kubernetes deployment configuration...'
+                        sh 'kubectl apply -f k8s/deployment.yaml'
+                        sh 'kubectl apply -f k8s/service.yaml'
+                    }
                 }
             }
         }
