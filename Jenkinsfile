@@ -36,10 +36,9 @@ pipeline {
                     ) {
                         echo "KUBECONFIG is correctly set to: ${env.KUBECONFIG} (Inside Docker container)"
                         
-                        // 1. Refresh authentication using the host VM's Service Account
-                        echo 'Activating host Service Account for token refresh...'
-                        // This step assumes the Jenkins VM has a GCP Service Account attached with GKE Admin roles.
-                        sh "gcloud auth activate-service-account --key-file=/dev/null"
+                        // 1. --- REMOVED THE FAILING gcloud auth activate-service-account STEP ---
+                        // We rely on the Service Account attached to the host VM (GCE metadata)
+                        echo 'Relying on host VM Service Account for GKE authentication...'
                         
                         // 2. Get fresh cluster credentials (updates the mounted /root/.kube/config file)
                         echo "Getting fresh credentials for cluster ${env.GKE_CLUSTER}..."
@@ -50,8 +49,9 @@ pipeline {
 
                         // 4. Perform the Kubernetes deployment
                         echo 'Applying Kubernetes deployment configuration...'
-                        sh 'kubectl apply -f k8s/deployment.yaml'
-                        sh 'kubectl apply -f k8s/service.yaml'
+                        // FIX: Updated file paths to use the manifests/ directory provided in the context.
+                        sh 'kubectl apply -f manifests/deployment-high-spec.yaml'
+                        sh 'kubectl apply -f manifests/service-high-spec.yaml'
                     }
                 }
             }
